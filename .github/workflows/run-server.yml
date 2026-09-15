@@ -1,0 +1,45 @@
+name: Run Spiritual Lessons Server
+
+on:
+  workflow_dispatch:
+
+jobs:
+  serve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Unzip app_data if needed
+        run: |
+          if [ -f "SadeghKhademi_Lessons.zip" ] && [ ! -d "app_data" ]; then
+            unzip -q SadeghKhademi_Lessons.zip -d app_data
+          fi
+
+      - name: Download cloudflared
+        run: |
+          curl -L -o cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+          chmod +x cloudflared
+
+      - name: Start local server
+        run: |
+          cd app_data
+          python3 -m http.server 8000 &
+          sleep 3
+
+      - name: Start Cloudflare tunnel and print link
+        run: |
+          ./cloudflared tunnel --url http://127.0.0.1:8000 > tunnel.log 2>&1 &
+          sleep 8
+          echo "=================================================="
+          echo "لینک عمومی اپ (فقط تا وقتی این جاب روشنه معتبره):"
+          grep -o 'https://[a-zA-Z0-9.-]*trycloudflare.com' tunnel.log | head -n 1
+          echo "=================================================="
+
+      - name: Keep server alive
+        run: |
+          for i in $(seq 1 2130); do
+            sleep 10
+          done
